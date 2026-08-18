@@ -1,0 +1,23 @@
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Uploaded source files (no longer used — files live in Vercel Blob)
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
