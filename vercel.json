@@ -1,5 +1,5 @@
-{
-  "buildCommand": "npm run build -w client",
+﻿{
+  "buildCommand": "npm run build -w shared && npm run build -w client",
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "functions": {
@@ -12,3 +12,4 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
+
