@@ -2,6 +2,7 @@
   "name": "docu-mind",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "DocuMind - AI-powered document Q&A workspace (RAG)",
   "workspaces": [
     "client",
