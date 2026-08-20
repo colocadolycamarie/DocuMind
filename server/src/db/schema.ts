@@ -12,7 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Embedding dimension for Google Gemini's text-embedding-004 model.
+ * Embedding dimension for Google Gemini's gemini-embedding-001 model,
+ * truncated from its default 3072 down to 768 via outputDimensionality.
  * If you switch embedding models, update this and re-run migrations.
  */
 export const EMBEDDING_DIMENSIONS = 768;
