@@ -3,7 +3,7 @@
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 60
     }
   },
