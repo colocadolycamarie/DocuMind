@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build -w shared && npm run build -w client && rm -rf node_modules/@docu-mind/shared && mkdir -p node_modules/@docu-mind/shared && cp -r shared/dist node_modules/@docu-mind/shared/dist && cp shared/package.json node_modules/@docu-mind/shared/package.json",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "functions": {
