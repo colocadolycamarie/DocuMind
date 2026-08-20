@@ -12,10 +12,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Embedding dimension for OpenAI's text-embedding-3-small model.
+ * Embedding dimension for Google Gemini's text-embedding-004 model.
  * If you switch embedding models, update this and re-run migrations.
  */
-export const EMBEDDING_DIMENSIONS = 1536;
+export const EMBEDDING_DIMENSIONS = 768;
 
 export const documentStatusEnum = pgEnum("document_status", [
   "queued",

@@ -2,7 +2,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
 import { conversations, messages } from "../db/schema.js";
-import { openai } from "../lib/openai.js";
+import { llm } from "../lib/llm.js";
 import { env } from "../env.js";
 import { retrieveRelevantChunks } from "./retrieval-service.js";
 import { markDocumentQueried } from "./document-service.js";
@@ -135,8 +135,8 @@ async function generateGroundedAnswer(
     )
     .join("\n\n---\n\n");
 
-  const completion = await openai.chat.completions.create({
-    model: env.OPENAI_CHAT_MODEL,
+  const completion = await llm.chat.completions.create({
+    model: env.GROQ_CHAT_MODEL,
     temperature: 0.1,
     response_format: { type: "json_object" },
     messages: [

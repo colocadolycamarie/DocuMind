@@ -5,9 +5,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
-  OPENAI_CHAT_MODEL: z.string().default("gpt-4o-mini"),
-  OPENAI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
+  GROQ_API_KEY: z.string().min(1, "GROQ_API_KEY is required"),
+  GROQ_CHAT_MODEL: z.string().default("llama-3.3-70b-versatile"),
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
   BLOB_READ_WRITE_TOKEN: z.string().min(1, "BLOB_READ_WRITE_TOKEN is required"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
 });

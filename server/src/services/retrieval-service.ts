@@ -1,7 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { documentChunks, documents } from "../db/schema.js";
-import { embedText } from "../lib/openai.js";
+import { embedText } from "../lib/embeddings.js";
 import type { SourceChunk } from "@docu-mind/shared";
 
 const TOP_K = 6;

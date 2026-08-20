@@ -3,7 +3,7 @@ import { db } from "../db/client.js";
 import { documents, documentChunks } from "../db/schema.js";
 import { extractText } from "../lib/extract-text.js";
 import { chunkPages } from "../lib/chunking.js";
-import { embedTexts } from "../lib/openai.js";
+import { embedTexts } from "../lib/embeddings.js";
 import { storeFile, deleteFile, fetchFileBuffer } from "../lib/storage.js";
 import { logger } from "../lib/logger.js";
 import { ApiError } from "../middlewares/error-handler.js";

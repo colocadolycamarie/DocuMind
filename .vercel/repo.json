@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_t5XQyzH4CmmFGbaNTaoeIqYh4NC2",
+      "name": "docu-mind-client",
+      "directory": ".",
+      "orgId": "team_IZV2t5PfL5WsAVxY3ZaqzMWv"
+    }
+  ]
+}
