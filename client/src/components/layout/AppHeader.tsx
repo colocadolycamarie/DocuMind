@@ -34,8 +34,8 @@ export function AppHeader() {
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
         </Button>
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-semibold tracking-tight text-primary-foreground">
-            dm
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary">
+            <img src="/logo.png" alt="DocuMind logo" className="h-full w-full object-cover" />
           </div>
           <div className="hidden min-[420px]:block">
             <div className="font-serif text-[19px] leading-none tracking-tight">DocuMind</div>
