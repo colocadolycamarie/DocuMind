@@ -16,7 +16,7 @@ import {
  * truncated from its default 3072 down to 768 via outputDimensionality.
  * If you switch embedding models, update this and re-run migrations.
  */
-export const EMBEDDING_DIMENSIONS = 768;
+export const EMBEDDING_DIMENSIONS = 384;
 
 export const documentStatusEnum = pgEnum("document_status", [
   "queued",
@@ -109,3 +109,4 @@ export const workspaceSettings = pgTable("workspace_settings", {
   theme: text("theme").notNull().default("system"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+

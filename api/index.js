@@ -26727,7 +26727,7 @@ var require_transport = __commonJS({
       stream.flushSync();
     }
     function transport(fullOptions) {
-      const { pipeline, targets, levels, dedupe, worker = {}, caller = getCallers(), sync = false } = fullOptions;
+      const { pipeline: pipeline2, targets, levels, dedupe, worker = {}, caller = getCallers(), sync = false } = fullOptions;
       const options = {
         ...fullOptions.options
       };
@@ -26755,9 +26755,9 @@ var require_transport = __commonJS({
             };
           });
         });
-      } else if (pipeline) {
+      } else if (pipeline2) {
         target = bundlerOverrides["pino-worker"] || join(__dirname, "worker.js");
-        options.pipelines = [pipeline.map((dest) => {
+        options.pipelines = [pipeline2.map((dest) => {
           return {
             ...dest,
             target: fixTarget(dest.target)
@@ -36149,7 +36149,7 @@ var require_pipeline = __commonJS({
       if (typeof streams[streams.length - 1] !== "function") return noop2;
       return streams.pop();
     }
-    function pipeline() {
+    function pipeline2() {
       for (var _len = arguments.length, streams = new Array(_len), _key = 0; _key < _len; _key++) {
         streams[_key] = arguments[_key];
       }
@@ -36172,7 +36172,7 @@ var require_pipeline = __commonJS({
       });
       return streams.reduce(pipe);
     }
-    module2.exports = pipeline;
+    module2.exports = pipeline2;
   }
 });
 
@@ -45045,7 +45045,7 @@ var init_schema2 = __esm({
   "server/src/db/schema.ts"() {
     "use strict";
     init_pg_core();
-    EMBEDDING_DIMENSIONS = 768;
+    EMBEDDING_DIMENSIONS = 384;
     documentStatusEnum = pgEnum("document_status", [
       "queued",
       "processing",
@@ -321836,7 +321836,7 @@ var require_client = __commonJS({
     var assert = __require("assert");
     var net = __require("net");
     var http = __require("http");
-    var { pipeline } = __require("stream");
+    var { pipeline: pipeline2 } = __require("stream");
     var util2 = require_util3();
     var timers = require_timers2();
     var Request4 = require_request2();
@@ -323254,7 +323254,7 @@ upgrade: ${upgrade}\r
         let onPipeData = function(chunk2) {
           request.onBodySent(chunk2);
         };
-        const pipe = pipeline(
+        const pipe = pipeline2(
           body,
           h2stream,
           (err) => {
@@ -325014,7 +325014,7 @@ var require_api_pipeline = __commonJS({
         util2.destroy(ret2, err);
       }
     };
-    function pipeline(opts, handler2) {
+    function pipeline2(opts, handler2) {
       try {
         const pipelineHandler = new PipelineHandler(opts, handler2);
         this.dispatch({ ...opts, body: pipelineHandler.req }, pipelineHandler);
@@ -325023,7 +325023,7 @@ var require_api_pipeline = __commonJS({
         return new PassThrough().destroy(err);
       }
     }
-    module2.exports = pipeline;
+    module2.exports = pipeline2;
   }
 });
 
@@ -327964,7 +327964,7 @@ var require_fetch = __commonJS({
     } = require_constants4();
     var { kHeadersList } = require_symbols2();
     var EE = __require("events");
-    var { Readable: Readable3, pipeline } = __require("stream");
+    var { Readable: Readable3, pipeline: pipeline2 } = __require("stream");
     var { addAbortListener, isErrored, isReadable, nodeMajor, nodeMinor } = require_util3();
     var { dataURLProcessor, serializeAMimeType } = require_dataURL();
     var { TransformStream: TransformStream3 } = __require("stream/web");
@@ -328883,7 +328883,7 @@ var require_fetch = __commonJS({
                 status,
                 statusText,
                 headersList: headers[kHeadersList],
-                body: decoders.length ? pipeline(this.body, ...decoders, () => {
+                body: decoders.length ? pipeline2(this.body, ...decoders, () => {
                 }) : this.body.on("error", () => {
                 })
               });
@@ -342636,7 +342636,6 @@ var envSchema = external_exports.object({
   DATABASE_URL: external_exports.string().min(1, "DATABASE_URL is required"),
   GROQ_API_KEY: external_exports.string().min(1, "GROQ_API_KEY is required"),
   GROQ_CHAT_MODEL: external_exports.string().default("llama-3.3-70b-versatile"),
-  GEMINI_API_KEY: external_exports.string().optional(),
   BLOB_READ_WRITE_TOKEN: external_exports.string().min(1, "BLOB_READ_WRITE_TOKEN is required"),
   CLIENT_ORIGIN: external_exports.string().default("http://localhost:5173")
 });
@@ -348624,6 +348623,33 @@ function detectHeading(pageText) {
   return void 0;
 }
 
+// server/src/lib/embeddings.ts
+import { pipeline, env as xenovaEnv } from "@xenova/transformers";
+xenovaEnv.cacheDir = "/tmp/transformers-cache";
+xenovaEnv.allowLocalModels = false;
+var MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
+var extractorPromise = null;
+function getExtractor() {
+  if (!extractorPromise) {
+    extractorPromise = pipeline("feature-extraction", MODEL_NAME);
+  }
+  return extractorPromise;
+}
+async function embedTexts(texts) {
+  if (texts.length === 0) return [];
+  const extractor = await getExtractor();
+  const results = [];
+  for (const text2 of texts) {
+    const output = await extractor(text2, { pooling: "mean", normalize: true });
+    results.push(Array.from(output.data));
+  }
+  return results;
+}
+async function embedText(text2) {
+  const [embedding] = await embedTexts([text2]);
+  return embedding;
+}
+
 // node_modules/is-node-process/lib/index.mjs
 function isNodeProcess() {
   if (typeof navigator !== "undefined" && navigator.product === "ReactNative") {
@@ -349982,13 +350008,15 @@ async function ingestDocument(documentId) {
     if (chunks.length === 0) {
       throw new Error("No extractable text was found in this document.");
     }
+    const embeddings = await embedTexts(chunks.map((chunk2) => chunk2.content));
     await db.insert(documentChunks).values(
       chunks.map((chunk2, index2) => ({
         documentId,
         chunkIndex: index2,
         content: chunk2.content,
         page: chunk2.page,
-        heading: chunk2.heading
+        heading: chunk2.heading,
+        embedding: embeddings[index2]
       }))
     );
     await setStatus(documentId, "ready");
@@ -356707,8 +356735,12 @@ var llm = new openai_default({
 
 // server/src/services/retrieval-service.ts
 init_schema2();
-var TOP_K = 8;
+var TOP_K = 6;
+var MIN_SIMILARITY = 0.2;
 async function retrieveRelevantChunks(question, options = {}) {
+  const embedding = await embedText(question);
+  const vectorLiteral = `[${embedding.join(",")}]`;
+  const distanceExpr = sql`${documentChunks.embedding} <=> ${vectorLiteral}::vector`;
   const rows = await db.select({
     id: documentChunks.id,
     documentId: documentChunks.documentId,
@@ -356716,80 +356748,49 @@ async function retrieveRelevantChunks(question, options = {}) {
     chunkIndex: documentChunks.chunkIndex,
     page: documentChunks.page,
     heading: documentChunks.heading,
-    content: documentChunks.content
+    content: documentChunks.content,
+    distance: distanceExpr
   }).from(documentChunks).innerJoin(documents, eq(documents.id, documentChunks.documentId)).where(
     options.documentId ? sql`${documentChunks.documentId} = ${options.documentId} AND ${documents.status} = 'ready'` : sql`${documents.status} = 'ready'`
-  ).orderBy(documentChunks.chunkIndex);
+  ).orderBy(distanceExpr).limit(TOP_K);
   if (rows.length === 0) return [];
-  const keywords = extractKeywords(question);
-  const scored = rows.map((row) => ({ row, score: scoreChunk(row.content, keywords) }));
-  const matched = scored.filter((entry) => entry.score > 0).sort((a3, b2) => b2.score - a3.score);
-  const selected = matched.length > 0 ? matched.slice(0, TOP_K) : scored.slice(0, TOP_K);
-  return selected.map(({ row, score }) => {
-    const neighbors = getNeighborContext(rows, row.documentId, row.chunkIndex);
-    return {
-      id: row.id,
-      documentId: row.documentId,
-      documentName: row.documentName,
-      page: row.page,
-      heading: row.heading,
-      content: row.content,
-      contextBefore: neighbors.before,
-      contextAfter: neighbors.after,
-      similarity: matched.length > 0 ? Math.min(1, score / Math.max(keywords.length, 1)) : 0.5
-    };
-  });
-}
-function extractKeywords(question) {
-  const stopWords = /* @__PURE__ */ new Set([
-    "the",
-    "a",
-    "an",
-    "is",
-    "are",
-    "was",
-    "were",
-    "what",
-    "who",
-    "when",
-    "where",
-    "why",
-    "how",
-    "do",
-    "does",
-    "did",
-    "of",
-    "in",
-    "on",
-    "at",
-    "to",
-    "for",
-    "and",
-    "or",
-    "this",
-    "that",
-    "it",
-    "please",
-    "tell",
-    "me",
-    "about",
-    "summarize",
-    "summary"
-  ]);
-  return Array.from(
-    new Set(
-      question.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 2 && !stopWords.has(word))
-    )
+  const withSimilarity = rows.map((row) => ({
+    ...row,
+    similarity: Math.max(0, Math.round((1 - row.distance) * 1e3) / 1e3)
+  }));
+  const aboveThreshold = withSimilarity.filter((row) => row.similarity >= MIN_SIMILARITY);
+  const selected = aboveThreshold.length > 0 ? aboveThreshold : withSimilarity.slice(0, TOP_K);
+  const withNeighbors = await Promise.all(
+    selected.map(async (row) => {
+      const neighbors = await getNeighborContext(row.documentId, row.id);
+      return {
+        id: row.id,
+        documentId: row.documentId,
+        documentName: row.documentName,
+        page: row.page,
+        heading: row.heading,
+        content: row.content,
+        contextBefore: neighbors.before,
+        contextAfter: neighbors.after,
+        similarity: row.similarity
+      };
+    })
   );
+  return withNeighbors;
 }
-function scoreChunk(content, keywords) {
-  if (keywords.length === 0) return 0;
-  const lowerContent = content.toLowerCase();
-  return keywords.reduce((score, word) => lowerContent.includes(word) ? score + 1 : score, 0);
-}
-function getNeighborContext(rows, documentId, chunkIndex) {
-  const before2 = rows.find((r2) => r2.documentId === documentId && r2.chunkIndex === chunkIndex - 1);
-  const after2 = rows.find((r2) => r2.documentId === documentId && r2.chunkIndex === chunkIndex + 1);
+async function getNeighborContext(documentId, chunkId) {
+  const current = await db.query.documentChunks.findFirst({
+    where: eq(documentChunks.id, chunkId)
+  });
+  if (!current) return { before: null, after: null };
+  const [before2, after2] = await Promise.all([
+    db.query.documentChunks.findFirst({
+      where: sql`${documentChunks.documentId} = ${documentId} AND ${documentChunks.chunkIndex} = ${current.chunkIndex - 1}`
+    }),
+    db.query.documentChunks.findFirst({
+      where: sql`${documentChunks.documentId} = ${documentId} AND ${documentChunks.chunkIndex} = ${current.chunkIndex + 1}`
+    })
+  ]);
   return {
     before: before2 ? excerptTail(before2.content) : null,
     after: after2 ? excerptHead(after2.content) : null

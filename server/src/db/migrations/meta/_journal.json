@@ -1,20 +1,27 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1787009973980,
-      "tag": "0000_minor_old_lace",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1787211900000,
-      "tag": "0001_gemini_embeddings",
-      "breakpoints": true
-    }
-  ]
+    "version":  "7",
+    "dialect":  "postgresql",
+    "entries":  [
+                    {
+                        "idx":  0,
+                        "version":  "7",
+                        "when":  1787009973980,
+                        "tag":  "0000_minor_old_lace",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  1,
+                        "version":  "7",
+                        "when":  1787211900000,
+                        "tag":  "0001_gemini_embeddings",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  2,
+                        "version":  "7",
+                        "when":  1787899198933,
+                        "tag":  "0002_local_embeddings",
+                        "breakpoints":  true
+                    }
+                ]
 }
