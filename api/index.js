@@ -342636,7 +342636,7 @@ var envSchema = external_exports.object({
   DATABASE_URL: external_exports.string().min(1, "DATABASE_URL is required"),
   GROQ_API_KEY: external_exports.string().min(1, "GROQ_API_KEY is required"),
   GROQ_CHAT_MODEL: external_exports.string().default("llama-3.3-70b-versatile"),
-  GEMINI_API_KEY: external_exports.string().min(1, "GEMINI_API_KEY is required"),
+  GEMINI_API_KEY: external_exports.string().optional(),
   BLOB_READ_WRITE_TOKEN: external_exports.string().min(1, "BLOB_READ_WRITE_TOKEN is required"),
   CLIENT_ORIGIN: external_exports.string().default("http://localhost:5173")
 });
@@ -348624,43 +348624,6 @@ function detectHeading(pageText) {
   return void 0;
 }
 
-// server/src/lib/embeddings.ts
-var GEMINI_MODEL = "gemini-embedding-001";
-var GEMINI_OUTPUT_DIMENSIONALITY = 768;
-var GEMINI_BATCH_EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:batchEmbedContents`;
-async function embedTexts(texts) {
-  if (texts.length === 0) return [];
-  const BATCH_SIZE = 100;
-  const results = [];
-  for (let i2 = 0; i2 < texts.length; i2 += BATCH_SIZE) {
-    const batch = texts.slice(i2, i2 + BATCH_SIZE);
-    const response = await fetch(`${GEMINI_BATCH_EMBED_URL}?key=${env2.GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: batch.map((text2) => ({
-          model: `models/${GEMINI_MODEL}`,
-          content: { parts: [{ text: text2 }] },
-          outputDimensionality: GEMINI_OUTPUT_DIMENSIONALITY
-        }))
-      })
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini embedding request failed (${response.status}): ${errorText}`);
-    }
-    const data = await response.json();
-    for (const item of data.embeddings) {
-      results.push(item.values);
-    }
-  }
-  return results;
-}
-async function embedText(text2) {
-  const [embedding] = await embedTexts([text2]);
-  return embedding;
-}
-
 // node_modules/is-node-process/lib/index.mjs
 function isNodeProcess() {
   if (typeof navigator !== "undefined" && navigator.product === "ReactNative") {
@@ -350019,15 +349982,13 @@ async function ingestDocument(documentId) {
     if (chunks.length === 0) {
       throw new Error("No extractable text was found in this document.");
     }
-    const embeddings = await embedTexts(chunks.map((chunk2) => chunk2.content));
     await db.insert(documentChunks).values(
       chunks.map((chunk2, index2) => ({
         documentId,
         chunkIndex: index2,
         content: chunk2.content,
         page: chunk2.page,
-        heading: chunk2.heading,
-        embedding: embeddings[index2]
+        heading: chunk2.heading
       }))
     );
     await setStatus(documentId, "ready");
@@ -356746,65 +356707,99 @@ var llm = new openai_default({
 
 // server/src/services/retrieval-service.ts
 init_schema2();
-var TOP_K = 6;
-var MIN_SIMILARITY = 0.2;
+var TOP_K = 8;
 async function retrieveRelevantChunks(question, options = {}) {
-  const embedding = await embedText(question);
-  const vectorLiteral = `[${embedding.join(",")}]`;
-  const distanceExpr = sql`${documentChunks.embedding} <=> ${vectorLiteral}::vector`;
   const rows = await db.select({
     id: documentChunks.id,
     documentId: documentChunks.documentId,
     documentName: documents.name,
+    chunkIndex: documentChunks.chunkIndex,
     page: documentChunks.page,
     heading: documentChunks.heading,
-    content: documentChunks.content,
-    distance: distanceExpr
+    content: documentChunks.content
   }).from(documentChunks).innerJoin(documents, eq(documents.id, documentChunks.documentId)).where(
     options.documentId ? sql`${documentChunks.documentId} = ${options.documentId} AND ${documents.status} = 'ready'` : sql`${documents.status} = 'ready'`
-  ).orderBy(distanceExpr).limit(TOP_K);
-  const withNeighbors = await Promise.all(
-    rows.map(async (row) => {
-      const similarity = 1 - row.distance;
-      const neighbors = await getNeighborContext(row.documentId, row.id);
-      return {
-        id: row.id,
-        documentId: row.documentId,
-        documentName: row.documentName,
-        page: row.page,
-        heading: row.heading,
-        content: row.content,
-        contextBefore: neighbors.before,
-        contextAfter: neighbors.after,
-        similarity: Math.max(0, Math.round(similarity * 1e3) / 1e3)
-      };
-    })
-  );
-  return withNeighbors.filter((chunk2) => chunk2.similarity >= MIN_SIMILARITY);
-}
-async function getNeighborContext(documentId, chunkId) {
-  const current = await db.query.documentChunks.findFirst({
-    where: eq(documentChunks.id, chunkId)
+  ).orderBy(documentChunks.chunkIndex);
+  if (rows.length === 0) return [];
+  const keywords = extractKeywords(question);
+  const scored = rows.map((row) => ({ row, score: scoreChunk(row.content, keywords) }));
+  const matched = scored.filter((entry) => entry.score > 0).sort((a3, b2) => b2.score - a3.score);
+  const selected = matched.length > 0 ? matched.slice(0, TOP_K) : scored.slice(0, TOP_K);
+  return selected.map(({ row, score }) => {
+    const neighbors = getNeighborContext(rows, row.documentId, row.chunkIndex);
+    return {
+      id: row.id,
+      documentId: row.documentId,
+      documentName: row.documentName,
+      page: row.page,
+      heading: row.heading,
+      content: row.content,
+      contextBefore: neighbors.before,
+      contextAfter: neighbors.after,
+      similarity: matched.length > 0 ? Math.min(1, score / Math.max(keywords.length, 1)) : 0.5
+    };
   });
-  if (!current) return { before: null, after: null };
-  const [before2, after2] = await Promise.all([
-    db.query.documentChunks.findFirst({
-      where: sql`${documentChunks.documentId} = ${documentId} AND ${documentChunks.chunkIndex} = ${current.chunkIndex - 1}`
-    }),
-    db.query.documentChunks.findFirst({
-      where: sql`${documentChunks.documentId} = ${documentId} AND ${documentChunks.chunkIndex} = ${current.chunkIndex + 1}`
-    })
+}
+function extractKeywords(question) {
+  const stopWords = /* @__PURE__ */ new Set([
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "was",
+    "were",
+    "what",
+    "who",
+    "when",
+    "where",
+    "why",
+    "how",
+    "do",
+    "does",
+    "did",
+    "of",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "and",
+    "or",
+    "this",
+    "that",
+    "it",
+    "please",
+    "tell",
+    "me",
+    "about",
+    "summarize",
+    "summary"
   ]);
+  return Array.from(
+    new Set(
+      question.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 2 && !stopWords.has(word))
+    )
+  );
+}
+function scoreChunk(content, keywords) {
+  if (keywords.length === 0) return 0;
+  const lowerContent = content.toLowerCase();
+  return keywords.reduce((score, word) => lowerContent.includes(word) ? score + 1 : score, 0);
+}
+function getNeighborContext(rows, documentId, chunkIndex) {
+  const before2 = rows.find((r2) => r2.documentId === documentId && r2.chunkIndex === chunkIndex - 1);
+  const after2 = rows.find((r2) => r2.documentId === documentId && r2.chunkIndex === chunkIndex + 1);
   return {
     before: before2 ? excerptTail(before2.content) : null,
     after: after2 ? excerptHead(after2.content) : null
   };
 }
 function excerptTail(text2, length = 140) {
-  return text2.length > length ? `\u2026${text2.slice(-length)}` : text2;
+  return text2.length > length ? `\uFFFD${text2.slice(-length)}` : text2;
 }
 function excerptHead(text2, length = 140) {
-  return text2.length > length ? `${text2.slice(0, length)}\u2026` : text2;
+  return text2.length > length ? `${text2.slice(0, length)}\uFFFD` : text2;
 }
 
 // server/src/services/chat-service.ts

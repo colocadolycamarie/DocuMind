@@ -3,7 +3,6 @@ import { db } from "../db/client.js";
 import { documents, documentChunks } from "../db/schema.js";
 import { extractText } from "../lib/extract-text.js";
 import { chunkPages } from "../lib/chunking.js";
-import { embedTexts } from "../lib/embeddings.js";
 import { storeFile, deleteFile, fetchFileBuffer } from "../lib/storage.js";
 import { logger } from "../lib/logger.js";
 import { ApiError } from "../middlewares/error-handler.js";
@@ -98,17 +97,14 @@ export async function ingestDocument(documentId: string): Promise<void> {
       throw new Error("No extractable text was found in this document.");
     }
 
-    const embeddings = await embedTexts(chunks.map((chunk) => chunk.content));
-
-    await db.insert(documentChunks).values(
+        await db.insert(documentChunks).values(
       chunks.map((chunk, index) => ({
         documentId,
         chunkIndex: index,
         content: chunk.content,
         page: chunk.page,
         heading: chunk.heading,
-        embedding: embeddings[index],
-      })),
+        })),
     );
 
     await setStatus(documentId, "ready");
@@ -158,3 +154,5 @@ function toDocumentDto(row: typeof documents.$inferSelect, chunkCount: number): 
     lastQueriedAt: row.lastQueriedAt ? row.lastQueriedAt.toISOString() : null,
   };
 }
+
+
