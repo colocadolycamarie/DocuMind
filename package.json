@@ -15,7 +15,7 @@
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
-    "vercel-build": "npm run build -w shared && npm run build -w client && npx esbuild api/index.ts --bundle --platform=node --format=esm --target=node20 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=api/index.js",
+    "vercel-build": "npm run build -w shared && npm run build -w client && npx esbuild api-src/index.ts --bundle --platform=node --format=esm --target=node20 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=api/index.js",
     "start": "npm run start -w server",
     "db:generate": "npm run db:generate -w server",
     "db:migrate": "npm run db:migrate -w server",
